@@ -31,7 +31,7 @@ vectorstore = PineconeVectorStore(index_name=config["INDEX_NAME"], embedding=emb
 # Declare the model
 llm = ChatOpenAI(
     model="gpt-4o-mini", 
-    temperature=0,
+    temperature=0.1,
     api_key=config["OPENAI_API_KEY"]
 )
 
@@ -60,16 +60,30 @@ def retrieve_data_pinecone(state: State):
     # Extract user query from state
     query = state["messages"][-1].content
 
-    retrieved_docs = vectorstore.similarity_search(
+    retrieved_docs = vectorstore.similarity_search_with_score(
         query,
         k=3
     )
 
-    docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+    docs = [
+        {"content": doc.page_content, "score": score}
+        for doc, score in retrieved_docs
+    ]
+
+    avg_score = round(
+        sum(score for _, score in retrieved_docs) / len(retrieved_docs),
+        2
+    ) if retrieved_docs else 0.0
 
     return {
         "messages": [
-            AIMessage(content=docs_content)
+            AIMessage(
+                content=docs,
+                additional_kwargs={
+                    "documents": docs,
+                    "retrieval_confidence": avg_score,
+                },
+            )
         ]
     }
 

@@ -11,7 +11,7 @@ class QueryRequest(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    answer: str
+    answer: dict
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -23,8 +23,12 @@ def query_agent(request: QueryRequest):
             ]
         }
     )
-
-    final_answer = result["messages"][-1].content
+    
+    final_answer = {
+        "ai_response": result["messages"][-1].content,
+        "retrieved_chunks": result["messages"][1].additional_kwargs["documents"],
+        "confidence_score": result["messages"][1].additional_kwargs["retrieval_confidence"]
+    }
 
     return QueryResponse(answer=final_answer)
 
